@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Message Delivery Game</title>
+
+<style>
+body {
+  margin: 0;
+  background: #0f172a;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+#gameContainer {
+  width: 390px; /* iPhone 16 width */
+  height: 844px;
+  background: #020617;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Start Screen */
+#startScreen {
+  position: absolute;
+  inset: 0;
+  background: #020617;
+  padding: 20px;
+  text-align: center;
+  z-index: 10;
+}
+
+#startScreen h1 {
+  font-size: 24px;
+}
+
+#startScreen p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button {
+  padding: 12px 20px;
+  font-size: 16px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 8px;
+  background: #22c55e;
+  color: black;
+}
+
+/* Game Area */
+#game {
+  width: 100%;
+  height: 700px;
+  position: relative;
+  background: linear-gradient(#1e293b 50%, #334155 50%);
+}
+
+.player {
+  width: 30px;
+  height: 30px;
+  position: absolute;
+  font-size: 26px;
+  text-align: center;
+}
+
+.obstacle, .log {
+  position: absolute;
+  font-size: 26px;
+}
+
+.log {
+  background: rgba(34,197,94,0.15);
+  border-radius: 6px;
+}
+
+/* Controls */
+#controls {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+.control-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #334155;
+  color: white;
+  font-size: 22px;
+  border: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="gameContainer">
+
+  <!-- START SCREEN -->
+  <div id="startScreen">
+    <h1>Message Delivery</h1>
+    <p>
+      This game represents delivering your message to an audience.
+      <br><br>
+      <strong>Distractions</strong> (📱 🗣️ ⏰) can derail you if you rush.
+      <br><br>
+      <strong>Supportive cues</strong> (👀 ⏸️) help you pause, breathe, and regain control.
+      <br><br>
+      Move deliberately. Timing matters.
+    </p>
+    <button onclick="startGame()">Start</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game"></div>
+
+  <!-- CONTROLS -->
+  <div id="controls">
+    <button class="control-btn" onclick="move(0,-40)">⬆️</button>
+    <button class="control-btn" onclick="move(-40,0)">⬅️</button>
+    <button class="control-btn" onclick="move(40,0)">➡️</button>
+    <button class="control-btn" onclick="move(0,40)">⬇️</button>
+  </div>
+
+</div>
+
+<script>
+const game = document.getElementById("game");
+
+let player, gameRunning = false;
+let obstacles = [];
+let logs = [];
+
+function startGame() {
+  document.getElementById("startScreen").style.display = "none";
+  game.innerHTML = "";
+  obstacles = [];
+  logs = [];
+  gameRunning = true;
+
+  player = document.createElement("div");
+  player.className = "player";
+  player.innerHTML = "🎤";
+  player.style.left = "180px";
+  player.style.top = "660px";
+  game.appendChild(player);
+
+  spawnObstacles();
+  spawnLogs();
+}
+
+function spawnObstacles() {
+  const icons = ["📱", "🗣️", "⏰"];
+  for (let i = 0; i < 6; i++) {
+    let o = document.createElement("div");
+    o.className = "obstacle";
+    o.innerHTML = icons[Math.floor(Math.random()*icons.length)];
+    o.style.left = Math.random()*350 + "px";
+    o.style.top = (100 + i*80) + "px";
+    game.appendChild(o);
+    obstacles.push(o);
+  }
+}
+
+function spawnLogs() {
+  const icons = ["👀", "⏸️"];
+  for (let i = 0; i < 4; i++) {
+    let l = document.createElement("div");
+    l.className = "log";
+    l.innerHTML = icons[Math.floor(Math.random()*icons.length)];
+    l.style.left = Math.random()*300 + "px";
+    l.style.top = (140 + i*120) + "px";
+    game.appendChild(l);
+    logs.push(l);
+  }
+}
+
+function move(dx, dy) {
+  if (!gameRunning) return;
+
+  let x = parseInt(player.style.left);
+  let y = parseInt(player.style.top);
+
+  x = Math.max(0, Math.min(360, x + dx));
+  y = Math.max(0, Math.min(670, y + dy));
+
+  player.style.left = x + "px";
+  player.style.top = y + "px";
+
+  checkCollision();
+}
+
+function checkCollision() {
+  for (let o of obstacles) {
+    if (hit(player, o)) {
+      lose();
+      return;
+    }
+  }
+
+  let onLog = false;
+  for (let l of logs) {
+    if (hit(player, l)) onLog = true;
+  }
+
+  if (player.offsetTop < 100 && !onLog) {
+    lose();
+  }
+
+  if (player.offsetTop <= 0) {
+    win();
+  }
+}
+
+function hit(a, b) {
+  return a.getBoundingClientRect().left < b.getBoundingClientRect().right &&
+         a.getBoundingClientRect().right > b.getBoundingClientRect().left &&
+         a.getBoundingClientRect().top < b.getBoundingClientRect().bottom &&
+         a.getBoundingClientRect().bottom > b.getBoundingClientRect().top;
+}
+
+function win() {
+  gameRunning = false;
+  alert("✅ Message Delivered!\nYou stayed focused and timed your moves.");
+  reset();
+}
+
+function lose() {
+  gameRunning = false;
+  alert("❌ Message Lost.\nDistractions took over.");
+  reset();
+}
+
+function reset() {
+  document.getElementById("startScreen").style.display = "block";
+}
+</script>
+
+</body>
+</html>
