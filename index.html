@@ -16,12 +16,19 @@ body {
 }
 
 #container {
-  width: 390px;          /* iPhone 16 width */
-  height: 844px;         /* iPhone 16 height */
+  width: 390px;
+  height: 844px;
   background: #020617;
   color: white;
   position: relative;
   overflow: hidden;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  height: 44px;
+  padding: 10px;
+  font-size: 16px;
 }
 
 /* ---------- START SCREEN ---------- */
@@ -55,7 +62,7 @@ button {
 /* ---------- GAME AREA ---------- */
 #game {
   width: 100%;
-  height: 700px;
+  height: 656px;
   position: relative;
 }
 
@@ -80,27 +87,32 @@ button {
   text-align: center;
 }
 
-/* Obstacles & Logs */
+/* Entities */
 .entity {
   position: absolute;
   font-size: 26px;
 }
 
-/* Controls */
+/* ---------- CONTROLS ---------- */
 #controls {
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: 80px 80px 80px;
+  grid-template-rows: 60px 60px 60px;
+  gap: 6px;
+  justify-content: center;
   padding: 10px;
 }
 
 .control {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
   background: #334155;
-  color: white;
-  font-size: 22px;
+  border-radius: 12px;
   border: none;
+  font-size: 22px;
+  color: white;
+}
+
+.empty {
+  background: transparent;
 }
 </style>
 </head>
@@ -108,6 +120,11 @@ button {
 <body>
 
 <div id="container">
+
+<!-- HUD -->
+<div id="hud">
+  Score: <span id="score">0</span>
+</div>
 
 <!-- START SCREEN -->
 <div id="startScreen">
@@ -119,8 +136,7 @@ button {
     <br>
     👀 ⏸️ = Supportive cues
     <br><br>
-    Timing matters.  
-    One move at a time.
+    Move deliberately. Timing matters.
   </p>
   <button onclick="startGame()">Start</button>
 </div>
@@ -128,12 +144,19 @@ button {
 <!-- GAME -->
 <div id="game"></div>
 
-<!-- CONTROLS -->
+<!-- CONTROLS (CROSS LAYOUT) -->
 <div id="controls">
+  <div class="empty"></div>
   <button class="control" onclick="move(0,-70)">⬆️</button>
+  <div class="empty"></div>
+
   <button class="control" onclick="move(-70,0)">⬅️</button>
+  <div class="empty"></div>
   <button class="control" onclick="move(70,0)">➡️</button>
+
+  <div class="empty"></div>
   <button class="control" onclick="move(0,70)">⬇️</button>
+  <div class="empty"></div>
 </div>
 
 </div>
@@ -144,8 +167,9 @@ const laneHeight = 70;
 let player;
 let entities = [];
 let gameRunning = false;
+let score = 0;
 
-/* ---------- LANE SETUP ---------- */
+/* ---------- LANE DEFINITIONS ---------- */
 const lanes = [
   { type: "goal" },
   { type: "river" },
@@ -167,12 +191,14 @@ function buildLanes() {
   });
 }
 
-/* ---------- GAME START ---------- */
+/* ---------- START GAME ---------- */
 function startGame() {
   document.getElementById("startScreen").style.display = "none";
   game.innerHTML = "";
   entities = [];
   gameRunning = true;
+  score = 0;
+  updateScore();
 
   buildLanes();
   spawnEntities();
@@ -191,7 +217,7 @@ function startGame() {
 function spawnEntities() {
   lanes.forEach((lane, i) => {
     if (lane.type === "road") {
-      spawnRow(i, ["📱","🗣️","⏰"], randomSpeed());
+      spawnRow(i, ["📱","🗣️","⏰"], randomSpeed(), false);
     }
     if (lane.type === "river") {
       spawnRow(i, ["👀","⏸️"], randomSpeed(), true);
@@ -199,7 +225,7 @@ function spawnEntities() {
   });
 }
 
-function spawnRow(row, icons, speed, isLog=false) {
+function spawnRow(row, icons, speed, isLog) {
   for (let i = 0; i < 3; i++) {
     let e = document.createElement("div");
     e.className = "entity";
@@ -214,10 +240,10 @@ function spawnRow(row, icons, speed, isLog=false) {
 }
 
 function randomSpeed() {
-  return (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random()*1.5);
+  return (Math.random() > 0.5 ? 1 : -1) * (1.2 + Math.random());
 }
 
-/* ---------- MOVEMENT ---------- */
+/* ---------- PLAYER MOVE ---------- */
 function move(dx, dy) {
   if (!gameRunning) return;
 
@@ -228,6 +254,9 @@ function move(dx, dy) {
 
   player.style.left = x + "px";
   player.style.top = y + "px";
+
+  score += 10;
+  updateScore();
 
   checkState();
 }
@@ -248,14 +277,14 @@ function update() {
   requestAnimationFrame(update);
 }
 
-/* ---------- COLLISION & STATE ---------- */
+/* ---------- COLLISION ---------- */
 function checkState() {
-  let playerRect = player.getBoundingClientRect();
+  let pRect = player.getBoundingClientRect();
   let onLog = false;
 
   for (let e of entities) {
     let r = e.getBoundingClientRect();
-    if (intersect(playerRect, r)) {
+    if (intersect(pRect, r)) {
       if (e.dataset.log === "true") {
         onLog = true;
         player.style.left =
@@ -269,13 +298,8 @@ function checkState() {
 
   let row = Math.floor(parseInt(player.style.top) / laneHeight);
 
-  if (lanes[row].type === "river" && !onLog) {
-    lose();
-  }
-
-  if (lanes[row].type === "goal") {
-    win();
-  }
+  if (lanes[row].type === "river" && !onLog) lose();
+  if (lanes[row].type === "goal") win();
 }
 
 function intersect(a,b) {
@@ -286,18 +310,23 @@ function intersect(a,b) {
 /* ---------- END STATES ---------- */
 function win() {
   gameRunning = false;
-  alert("✅ Message Delivered\nYou stayed focused and timed your moves.");
+  alert(`✅ Message Delivered!\nFinal Score: ${score}`);
   reset();
 }
 
 function lose() {
   gameRunning = false;
-  alert("❌ Message Lost\nDistractions took over.");
+  alert(`😔 Message Lost\nFinal Score: ${score}`);
   reset();
 }
 
 function reset() {
   document.getElementById("startScreen").style.display = "block";
+}
+
+/* ---------- SCORE ---------- */
+function updateScore() {
+  document.getElementById("score").textContent = score;
 }
 </script>
 
