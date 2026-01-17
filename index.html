@@ -3,34 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Message Delivery Game</title>
+
+<title>Message Delivery</title>
 
 <style>
 body {
   margin: 0;
-  background: #0f172a;
-  font-family: Arial, sans-serif;
+  background: #020617;
   display: flex;
   justify-content: center;
+  font-family: Arial, sans-serif;
 }
 
-#gameContainer {
-  width: 390px; /* iPhone 16 width */
-  height: 844px;
+#container {
+  width: 390px;          /* iPhone 16 width */
+  height: 844px;         /* iPhone 16 height */
   background: #020617;
   color: white;
   position: relative;
   overflow: hidden;
 }
 
-/* Start Screen */
+/* ---------- START SCREEN ---------- */
 #startScreen {
   position: absolute;
   inset: 0;
   background: #020617;
   padding: 20px;
-  text-align: center;
   z-index: 10;
+  text-align: center;
 }
 
 #startScreen h1 {
@@ -43,39 +44,46 @@ body {
 }
 
 button {
+  margin-top: 16px;
   padding: 12px 20px;
   font-size: 16px;
-  margin-top: 15px;
-  border: none;
   border-radius: 8px;
+  border: none;
   background: #22c55e;
-  color: black;
 }
 
-/* Game Area */
+/* ---------- GAME AREA ---------- */
 #game {
   width: 100%;
   height: 700px;
   position: relative;
-  background: linear-gradient(#1e293b 50%, #334155 50%);
 }
 
-.player {
-  width: 30px;
-  height: 30px;
+/* Lanes */
+.lane {
   position: absolute;
-  font-size: 26px;
+  width: 100%;
+  height: 70px;
+}
+
+.safe { background: #020617; }
+.road { background: #1e293b; }
+.river { background: #0f172a; }
+.goal { background: #14532d; }
+
+/* Player */
+#player {
+  width: 32px;
+  height: 32px;
+  position: absolute;
+  font-size: 28px;
   text-align: center;
 }
 
-.obstacle, .log {
+/* Obstacles & Logs */
+.entity {
   position: absolute;
   font-size: 26px;
-}
-
-.log {
-  background: rgba(34,197,94,0.15);
-  border-radius: 6px;
 }
 
 /* Controls */
@@ -85,7 +93,7 @@ button {
   padding: 10px;
 }
 
-.control-btn {
+.control {
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -99,140 +107,192 @@ button {
 
 <body>
 
-<div id="gameContainer">
+<div id="container">
 
-  <!-- START SCREEN -->
-  <div id="startScreen">
-    <h1>Message Delivery</h1>
-    <p>
-      This game represents delivering your message to an audience.
-      <br><br>
-      <strong>Distractions</strong> (📱 🗣️ ⏰) can derail you if you rush.
-      <br><br>
-      <strong>Supportive cues</strong> (👀 ⏸️) help you pause, breathe, and regain control.
-      <br><br>
-      Move deliberately. Timing matters.
-    </p>
-    <button onclick="startGame()">Start</button>
-  </div>
+<!-- START SCREEN -->
+<div id="startScreen">
+  <h1>Message Delivery</h1>
+  <p>
+    Deliver your message through a distracted audience.
+    <br><br>
+    📱 🗣️ ⏰ = Distractions  
+    <br>
+    👀 ⏸️ = Supportive cues
+    <br><br>
+    Timing matters.  
+    One move at a time.
+  </p>
+  <button onclick="startGame()">Start</button>
+</div>
 
-  <!-- GAME -->
-  <div id="game"></div>
+<!-- GAME -->
+<div id="game"></div>
 
-  <!-- CONTROLS -->
-  <div id="controls">
-    <button class="control-btn" onclick="move(0,-40)">⬆️</button>
-    <button class="control-btn" onclick="move(-40,0)">⬅️</button>
-    <button class="control-btn" onclick="move(40,0)">➡️</button>
-    <button class="control-btn" onclick="move(0,40)">⬇️</button>
-  </div>
+<!-- CONTROLS -->
+<div id="controls">
+  <button class="control" onclick="move(0,-70)">⬆️</button>
+  <button class="control" onclick="move(-70,0)">⬅️</button>
+  <button class="control" onclick="move(70,0)">➡️</button>
+  <button class="control" onclick="move(0,70)">⬇️</button>
+</div>
 
 </div>
 
 <script>
 const game = document.getElementById("game");
+const laneHeight = 70;
+let player;
+let entities = [];
+let gameRunning = false;
 
-let player, gameRunning = false;
-let obstacles = [];
-let logs = [];
+/* ---------- LANE SETUP ---------- */
+const lanes = [
+  { type: "goal" },
+  { type: "river" },
+  { type: "river" },
+  { type: "road" },
+  { type: "road" },
+  { type: "safe" },
+  { type: "road" },
+  { type: "road" },
+  { type: "safe" }
+];
 
+function buildLanes() {
+  lanes.forEach((lane, i) => {
+    const l = document.createElement("div");
+    l.className = `lane ${lane.type}`;
+    l.style.top = (i * laneHeight) + "px";
+    game.appendChild(l);
+  });
+}
+
+/* ---------- GAME START ---------- */
 function startGame() {
   document.getElementById("startScreen").style.display = "none";
   game.innerHTML = "";
-  obstacles = [];
-  logs = [];
+  entities = [];
   gameRunning = true;
 
+  buildLanes();
+  spawnEntities();
+
   player = document.createElement("div");
-  player.className = "player";
+  player.id = "player";
   player.innerHTML = "🎤";
   player.style.left = "180px";
-  player.style.top = "660px";
+  player.style.top = "560px";
   game.appendChild(player);
 
-  spawnObstacles();
-  spawnLogs();
+  requestAnimationFrame(update);
 }
 
-function spawnObstacles() {
-  const icons = ["📱", "🗣️", "⏰"];
-  for (let i = 0; i < 6; i++) {
-    let o = document.createElement("div");
-    o.className = "obstacle";
-    o.innerHTML = icons[Math.floor(Math.random()*icons.length)];
-    o.style.left = Math.random()*350 + "px";
-    o.style.top = (100 + i*80) + "px";
-    game.appendChild(o);
-    obstacles.push(o);
+/* ---------- SPAWN ENTITIES ---------- */
+function spawnEntities() {
+  lanes.forEach((lane, i) => {
+    if (lane.type === "road") {
+      spawnRow(i, ["📱","🗣️","⏰"], randomSpeed());
+    }
+    if (lane.type === "river") {
+      spawnRow(i, ["👀","⏸️"], randomSpeed(), true);
+    }
+  });
+}
+
+function spawnRow(row, icons, speed, isLog=false) {
+  for (let i = 0; i < 3; i++) {
+    let e = document.createElement("div");
+    e.className = "entity";
+    e.innerHTML = icons[Math.floor(Math.random()*icons.length)];
+    e.dataset.speed = speed;
+    e.dataset.log = isLog;
+    e.style.top = (row * laneHeight + 20) + "px";
+    e.style.left = (i * 140) + "px";
+    game.appendChild(e);
+    entities.push(e);
   }
 }
 
-function spawnLogs() {
-  const icons = ["👀", "⏸️"];
-  for (let i = 0; i < 4; i++) {
-    let l = document.createElement("div");
-    l.className = "log";
-    l.innerHTML = icons[Math.floor(Math.random()*icons.length)];
-    l.style.left = Math.random()*300 + "px";
-    l.style.top = (140 + i*120) + "px";
-    game.appendChild(l);
-    logs.push(l);
-  }
+function randomSpeed() {
+  return (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random()*1.5);
 }
 
+/* ---------- MOVEMENT ---------- */
 function move(dx, dy) {
   if (!gameRunning) return;
 
-  let x = parseInt(player.style.left);
-  let y = parseInt(player.style.top);
+  let x = parseInt(player.style.left) + dx;
+  let y = parseInt(player.style.top) + dy;
 
-  x = Math.max(0, Math.min(360, x + dx));
-  y = Math.max(0, Math.min(670, y + dy));
+  if (x < 0 || x > 358 || y < 0 || y > 630) return;
 
   player.style.left = x + "px";
   player.style.top = y + "px";
 
-  checkCollision();
+  checkState();
 }
 
-function checkCollision() {
-  for (let o of obstacles) {
-    if (hit(player, o)) {
-      lose();
-      return;
+/* ---------- GAME LOOP ---------- */
+function update() {
+  if (!gameRunning) return;
+
+  entities.forEach(e => {
+    let x = parseFloat(e.style.left);
+    x += parseFloat(e.dataset.speed);
+    if (x > 390) x = -40;
+    if (x < -40) x = 390;
+    e.style.left = x + "px";
+  });
+
+  checkState();
+  requestAnimationFrame(update);
+}
+
+/* ---------- COLLISION & STATE ---------- */
+function checkState() {
+  let playerRect = player.getBoundingClientRect();
+  let onLog = false;
+
+  for (let e of entities) {
+    let r = e.getBoundingClientRect();
+    if (intersect(playerRect, r)) {
+      if (e.dataset.log === "true") {
+        onLog = true;
+        player.style.left =
+          (parseFloat(player.style.left) + parseFloat(e.dataset.speed)) + "px";
+      } else {
+        lose();
+        return;
+      }
     }
   }
 
-  let onLog = false;
-  for (let l of logs) {
-    if (hit(player, l)) onLog = true;
-  }
+  let row = Math.floor(parseInt(player.style.top) / laneHeight);
 
-  if (player.offsetTop < 100 && !onLog) {
+  if (lanes[row].type === "river" && !onLog) {
     lose();
   }
 
-  if (player.offsetTop <= 0) {
+  if (lanes[row].type === "goal") {
     win();
   }
 }
 
-function hit(a, b) {
-  return a.getBoundingClientRect().left < b.getBoundingClientRect().right &&
-         a.getBoundingClientRect().right > b.getBoundingClientRect().left &&
-         a.getBoundingClientRect().top < b.getBoundingClientRect().bottom &&
-         a.getBoundingClientRect().bottom > b.getBoundingClientRect().top;
+function intersect(a,b) {
+  return !(a.right < b.left || a.left > b.right ||
+           a.bottom < b.top || a.top > b.bottom);
 }
 
+/* ---------- END STATES ---------- */
 function win() {
   gameRunning = false;
-  alert("✅ Message Delivered!\nYou stayed focused and timed your moves.");
+  alert("✅ Message Delivered\nYou stayed focused and timed your moves.");
   reset();
 }
 
 function lose() {
   gameRunning = false;
-  alert("❌ Message Lost.\nDistractions took over.");
+  alert("❌ Message Lost\nDistractions took over.");
   reset();
 }
 
